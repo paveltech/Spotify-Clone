@@ -13,9 +13,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-
 import com.codingwithmitch.audiostreamer.R;
-import com.codingwithmitch.audiostreamer.adapters.CategoryRecyclerAdapter;
 import com.codingwithmitch.audiostreamer.adapters.PlaylistRecyclerAdapter;
 import com.codingwithmitch.audiostreamer.models.Artist;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -40,6 +38,7 @@ public class PlaylistFragment extends Fragment implements
 
     // Vars
     private PlaylistRecyclerAdapter mAdapter;
+
     private ArrayList<MediaMetadataCompat> mMediaList = new ArrayList<>();
     private IMainActivity mIMainActivity;
     private String mSelectedCategory;
