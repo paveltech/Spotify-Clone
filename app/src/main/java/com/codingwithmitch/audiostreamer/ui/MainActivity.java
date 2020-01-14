@@ -268,13 +268,6 @@ public class MainActivity extends AppCompatActivity implements
     }
 
 
-
-    private void onFinishedGettingPreviousSessionData(List<MediaMetadataCompat> mediaItems){
-        mMyApplication.setMediaItems(mediaItems);
-        mMediaBrowserHelper.onStart(mWasConfigurationChange);
-        hideProgressBar();
-    }
-
     /**
      * Translate the Firestore data into something the MediaBrowserService can deal with (MediaMetaDataCompat objects)
      * @param document
@@ -303,34 +296,6 @@ public class MainActivity extends AppCompatActivity implements
         transaction.add(R.id.main_container, new PlaylistFragment(), "Hello");
         transaction.commit();
     }
-
-
-    private void showFragment(Fragment fragment, boolean backswardsMovement){
-
-        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-
-        if(backswardsMovement){
-            transaction.setCustomAnimations(R.anim.enter_from_left, R.anim.exit_to_right);
-        }
-
-        transaction.show(fragment);
-        transaction.commit();
-
-        for(Fragment f: MainActivityFragmentManager.getInstance().getFragments()){
-            if(f != null ){
-                if(!f.getTag().equals(fragment.getTag())){
-                    FragmentTransaction t = getSupportFragmentManager().beginTransaction();
-                    t.hide(f);
-                    t.commit();
-                }
-            }
-        }
-
-
-        Log.d(TAG, "showFragment: num fragments: " + MainActivityFragmentManager.getInstance().getFragments().size());
-
-    }
-
 
 
     @Override
