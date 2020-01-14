@@ -13,17 +13,21 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
+
 import com.codingwithmitch.audiostreamer.R;
 import com.codingwithmitch.audiostreamer.adapters.PlaylistRecyclerAdapter;
+import com.codingwithmitch.audiostreamer.api.ApiClient;
+import com.codingwithmitch.audiostreamer.api.ApiInterface;
 import com.codingwithmitch.audiostreamer.models.Artist;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
+import com.codingwithmitch.audiostreamer.pojo.SongItem;
+import com.codingwithmitch.audiostreamer.pojo.SongResponse;
 
 import java.util.ArrayList;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 
 public class PlaylistFragment extends Fragment implements
@@ -34,16 +38,17 @@ public class PlaylistFragment extends Fragment implements
 
     // UI Components
     private RecyclerView mRecyclerView;
-
+    protected static final String basePath = "http://storage.googleapis.com/automotive-media/";
 
     // Vars
     private PlaylistRecyclerAdapter mAdapter;
-
+    public ApiInterface apiInterface;
     private ArrayList<MediaMetadataCompat> mMediaList = new ArrayList<>();
+    private ArrayList<SongItem> songItemArrayList = new ArrayList<>();
     private IMainActivity mIMainActivity;
     private String mSelectedCategory;
-    private Artist mSelectArtist;
-    private MediaMetadataCompat mSelectedMedia;
+    //private Artist mSelectArtist;
+    private SongItem mSelectedMedia;
 
     public static PlaylistFragment newInstance(String category, Artist artist){
         PlaylistFragment playlistFragment = new PlaylistFragment();
@@ -57,7 +62,7 @@ public class PlaylistFragment extends Fragment implements
     @Override
     public void onHiddenChanged(boolean hidden) {
         if(!hidden){
-            mIMainActivity.setActionBarTitle(mSelectArtist.getTitle());
+            mIMainActivity.setActionBarTitle("Hello");
         }
     }
 
@@ -65,8 +70,8 @@ public class PlaylistFragment extends Fragment implements
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if(getArguments() != null){
-            mSelectedCategory = getArguments().getString("category");
-            mSelectArtist = getArguments().getParcelable("artist");
+            //mSelectedCategory = getArguments().getString("category");
+            //mSelectArtist = getArguments().getParcelable("artist");
         }
         setRetainInstance(true);
     }
@@ -74,68 +79,59 @@ public class PlaylistFragment extends Fragment implements
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_home, container, false);
+        View view = inflater.inflate(R.layout.fragment_home, container, false);
+        mRecyclerView = view.findViewById(R.id.recycler_view);
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+
+        apiInterface = ApiClient.getRetrofitInstance().create(ApiInterface.class);
+        retrieveMedia();
+        mIMainActivity.setActionBarTitle("Hello");
+        Toast.makeText(getActivity(), "fragment", Toast.LENGTH_SHORT).show();
+
+
+        return view;
     }
 
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        initRecyclerView(view);
-        mIMainActivity.setActionBarTitle(mSelectArtist.getTitle());
-
-        if(savedInstanceState != null){
-            mAdapter.setSelectedIndex(savedInstanceState.getInt("selected_index"));
-        }
-    }
-
-    private void getSelectedMediaItem(String mediaId){
-        for(MediaMetadataCompat mediaItem: mMediaList){
-            if(mediaItem.getDescription().getMediaId().equals(mediaId)){
-                mSelectedMedia = mediaItem;
-                mAdapter.setSelectedIndex(mAdapter.getIndexOfItem(mSelectedMedia));
-                break;
-            }
-        }
-    }
-	
     private void retrieveMedia(){
         mIMainActivity.showPrgressBar();
 
-        FirebaseFirestore firestore = FirebaseFirestore.getInstance();
+        Toast.makeText(getActivity(), "api call ", Toast.LENGTH_SHORT).show();
 
-        Query query = firestore
-                .collection(getString(R.string.collection_audio))
-                .document(getString(R.string.document_categories))
-                .collection(mSelectedCategory)
-                .document(mSelectArtist.getArtist_id())
-                .collection(getString(R.string.collection_content))
-                .orderBy(getString(R.string.field_date_added), Query.Direction.ASCENDING);
-
-        query.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+        apiInterface.getSongs().enqueue(new Callback<SongResponse>() {
             @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if(task.isSuccessful()){
-                    for(QueryDocumentSnapshot document: task.getResult()){
-                       addToMediaList(document);
+            public void onResponse(Call<SongResponse> call, Response<SongResponse> response) {
+                if (response.isSuccessful()){
+                    songItemArrayList = response.body().getMusic();
+                    setAdapterIn(response.body().getMusic());
+                    for(SongItem songItem: response.body().getMusic()){
+                        addToMediaList(songItem);
                     }
+                    updateDataSet();
                 }
-                else{
-                    Log.d(TAG, "onComplete: error getting documents: " + task.getException());
-                }
-                updateDataSet();
+            }
+
+            @Override
+            public void onFailure(Call<SongResponse> call, Throwable t) {
+
             }
         });
     }
 
-    private void addToMediaList(QueryDocumentSnapshot document) {
+    private void setAdapterIn(ArrayList<SongItem> songItemArrayList){
+        mAdapter = new PlaylistRecyclerAdapter(getActivity(), songItemArrayList, this);
+        mRecyclerView.setAdapter(mAdapter);
+    }
+
+    private void addToMediaList(SongItem songItem) {
         MediaMetadataCompat media = new MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, document.getString(getString(R.string.field_media_id)))
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, document.getString(getString(R.string.field_artist)))
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, document.getString(getString(R.string.field_title)))
+                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, ""+songItem.getDuration())
+                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, songItem.getArtist())
+                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, songItem.getTitle())
                 //.putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, document.getString(getString(R.string.field_media_url)))
                 .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, "https://vod.rockerzs.com/music/numb/master.m3u8")
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, document.getString(getString(R.string.field_description)))
-                .putString(MediaMetadataCompat.METADATA_KEY_DATE, document.getDate(getString(R.string.field_date_added)).toString())
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, mSelectArtist.getImage())
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, songItem.getSource())
+                //.putString(MediaMetadataCompat.METADATA_KEY_DATE, document.getDate(getString(R.string.field_date_added)).toString())
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, basePath+songItem.getImage())
                 .build();
 
 
@@ -145,21 +141,8 @@ public class PlaylistFragment extends Fragment implements
     private void updateDataSet(){
         mIMainActivity.hideProgressBar();
         mAdapter.notifyDataSetChanged();
-        if(mIMainActivity.getMyPreferenceManager().getLastPlayedArtist().equals(mSelectArtist.getArtist_id())){
-            getSelectedMediaItem(mIMainActivity.getMyPreferenceManager().getLastPlayedMedia());
-        }
     }
 
-    private void initRecyclerView(View view){
-        mRecyclerView = view.findViewById(R.id.recycler_view);
-        mRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
-        mAdapter = new PlaylistRecyclerAdapter(getActivity(), mMediaList, this);
-        mRecyclerView.setAdapter(mAdapter);
-
-        if(mMediaList.size() == 0){
-            retrieveMedia();
-        }
-    }
 
     @Override
     public void onAttach(Context context) {
@@ -171,35 +154,31 @@ public class PlaylistFragment extends Fragment implements
     public void onMediaSelected(int position) {
         mIMainActivity.getMyApplicationInstance().setMediaItems(mMediaList);
 
-        mSelectedMedia = mMediaList.get(position);
+        mSelectedMedia = songItemArrayList.get(position);
+
         mAdapter.setSelectedIndex(position);
         mIMainActivity.onMediaSelected(
-                mSelectArtist.getArtist_id(), // playlist_id = artist_id
+                ""+mSelectedMedia.getDuration(), // playlist_id = artist_id
                 mMediaList.get(position),
                 position);
-        saveLastPlayedSongProperties();
+        //saveLastPlayedSongProperties();
     }
 
-    public void updateUI(MediaMetadataCompat mediaItem){
-        mAdapter.setSelectedIndex(mAdapter.getIndexOfItem(mediaItem));
-        mSelectedMedia = mediaItem;
-        saveLastPlayedSongProperties();
+    public void updateUI(SongItem songItem){
+        mAdapter.setSelectedIndex(getIndexOfItem(songItem));
+        mSelectedMedia = songItem;
+        //saveLastPlayedSongProperties();
     }
 
-    private void saveLastPlayedSongProperties(){
-        // Save some properties for next time the app opens
-        // NOTE: Normally you'd do this with a cache
-        mIMainActivity.getMyPreferenceManager().savePlaylistId(mSelectArtist.getArtist_id()); // playlist id is same as artist id
-        mIMainActivity.getMyPreferenceManager().saveLastPlayedArtist(mSelectArtist.getArtist_id());
-        mIMainActivity.getMyPreferenceManager().saveLastPlayedCategory(mSelectedCategory);
-        mIMainActivity.getMyPreferenceManager().saveLastPlayedArtistImage(mSelectArtist.getImage());
-        mIMainActivity.getMyPreferenceManager().saveLastPlayedMedia(mSelectedMedia.getDescription().getMediaId());
-    }
 
-    @Override
-    public void onSaveInstanceState(@NonNull Bundle outState) {
-        super.onSaveInstanceState(outState);
-        outState.putInt("selected_index", mAdapter.getSelectedIndex());
+    public int getIndexOfItem(SongItem mediaItem){
+        String item = ""+mediaItem.getDuration();
+        for(int i = 0; i<mMediaList.size(); i++ ){
+            if(mMediaList.get(i).getDescription().getMediaId().equals(item)){
+                return i;
+            }
+        }
+        return -1;
     }
 }
 

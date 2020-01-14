@@ -75,10 +75,7 @@ public class MainActivity extends AppCompatActivity implements
 
         mMediaBrowserHelper = new MediaBrowserHelper(this, MediaService.class);
         mMediaBrowserHelper.setMediaBrowserHelperCallback(this);
-
-        if(savedInstanceState == null){
-            loadFragment(HomeFragment.newInstance(), true);
-        }
+        loadFragment();
     }
 
     private class UpdateUIBroadcastReceiver extends BroadcastReceiver{
@@ -87,10 +84,7 @@ public class MainActivity extends AppCompatActivity implements
         public void onReceive(Context context, Intent intent) {
             String newMediaId = intent.getStringExtra(getString(R.string.broadcast_new_media_id));
             Log.d(TAG, "onReceive: CALLED: " + newMediaId);
-            if(getPlaylistFragment() != null){
-                Log.d(TAG, "onReceive: " + mMyApplication.getMediaItem(newMediaId).getDescription().getMediaId());
-                getPlaylistFragment().updateUI(mMyApplication.getMediaItem(newMediaId));
-            }
+
         }
     }
 
@@ -258,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements
         super.onStart();
 
         if(!getMyPreferenceManager().getPlaylistId().equals("")){
-            prepareLastPlayedMedia();
+            //prepareLastPlayedMedia();
         }
         else{
             mMediaBrowserHelper.onStart(mWasConfigurationChange);
@@ -273,41 +267,7 @@ public class MainActivity extends AppCompatActivity implements
         getMediaControllerFragment().getMediaSeekBar().disconnectController();
     }
 
-    /**
-     * In a production app you'd want to get this data from a cache.
-     */
-    private void prepareLastPlayedMedia(){
-        showPrgressBar();
 
-        FirebaseFirestore firestore = FirebaseFirestore.getInstance();
-
-        Query query  = firestore
-                .collection(getString(R.string.collection_audio))
-                .document(getString(R.string.document_categories))
-                .collection(getMyPreferenceManager().getLastCategory())
-                .document(getMyPreferenceManager().getLastPlayedArtist())
-                .collection(getString(R.string.collection_content))
-                .orderBy(getString(R.string.field_date_added), Query.Direction.ASCENDING);
-
-        final List<MediaMetadataCompat> mediaItems = new ArrayList<>();
-        query.get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if (task.isSuccessful()) {
-                    for (QueryDocumentSnapshot document : task.getResult()) {
-                        MediaMetadataCompat mediaItem = addToMediaList(document);
-                        mediaItems.add(mediaItem);
-                        if(mediaItem.getDescription().getMediaId().equals(getMyPreferenceManager().getLastPlayedMedia())){
-                            getMediaControllerFragment().setMediaTitle(mediaItem);
-                        }
-                    }
-                } else {
-                    Log.d(TAG, "Error getting documents: ", task.getException());
-                }
-                onFinishedGettingPreviousSessionData(mediaItems);
-            }
-        });
-    }
 
     private void onFinishedGettingPreviousSessionData(List<MediaMetadataCompat> mediaItems){
         mMyApplication.setMediaItems(mediaItems);
@@ -337,33 +297,11 @@ public class MainActivity extends AppCompatActivity implements
         return media;
     }
 
-    private void loadFragment(Fragment fragment, boolean lateralMovement){
+    private void loadFragment(){
 
         FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-
-        if(lateralMovement){
-            transaction.setCustomAnimations(R.anim.enter_from_right, R.anim.exit_to_left);
-        }
-
-        String tag = "";
-        if(fragment instanceof HomeFragment){
-            tag = getString(R.string.fragment_home);
-        }
-        else if(fragment instanceof CategoryFragment){
-            tag = getString(R.string.fragment_category);
-            transaction.addToBackStack(tag);
-        }
-        else if(fragment instanceof PlaylistFragment){
-            tag = getString(R.string.fragment_playlist);
-            transaction.addToBackStack(tag);
-        }
-
-        transaction.add(R.id.main_container, fragment, tag);
+        transaction.add(R.id.main_container, new PlaylistFragment(), "Hello");
         transaction.commit();
-
-        MainActivityFragmentManager.getInstance().addFragment(fragment);
-
-        showFragment(fragment, false);
     }
 
 
@@ -393,21 +331,6 @@ public class MainActivity extends AppCompatActivity implements
 
     }
 
-    @Override
-    public void onBackPressed() {
-        ArrayList<Fragment> fragments = new ArrayList<>(MainActivityFragmentManager.getInstance().getFragments());
-
-        if(fragments.size() > 1){
-            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-            transaction.remove(fragments.get(fragments.size() - 1));
-            transaction.commit();
-
-            MainActivityFragmentManager.getInstance().removeFragment(fragments.size() - 1);
-            showFragment(fragments.get(fragments.size() - 2), true);
-        }
-
-        super.onBackPressed();
-    }
 
 
     @Override
@@ -429,12 +352,11 @@ public class MainActivity extends AppCompatActivity implements
 
     @Override
     public void onCategorySelected(String category) {
-        loadFragment(CategoryFragment.newInstance(category), true);
+        //loadFragment(CategoryFragment.newInstance(category), true);
     }
 
     @Override
     public void onArtistSelected(String category, Artist artist) {
-        loadFragment(PlaylistFragment.newInstance(category, artist), true);
     }
 
     @Override
