@@ -43,10 +43,7 @@ import static com.codingwithmitch.audiostreamer.util.Constants.SEEK_BAR_MAX;
 import static com.codingwithmitch.audiostreamer.util.Constants.SEEK_BAR_PROGRESS;
 
 
-public class MainActivity extends AppCompatActivity implements
-        IMainActivity,
-        MediaBrowserHelperCallback
-{
+public class MainActivity extends AppCompatActivity implements IMainActivity, MediaBrowserHelperCallback {
 
     private static final String TAG = "MainActivity";
 

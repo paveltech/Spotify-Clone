@@ -26,8 +26,7 @@ import com.google.firebase.firestore.QuerySnapshot;
 import java.util.ArrayList;
 
 
-public class PlaylistFragment extends Fragment implements
-        PlaylistRecyclerAdapter.IMediaSelector
+public class PlaylistFragment extends Fragment implements PlaylistRecyclerAdapter.IMediaSelector
 {
 
     private static final String TAG = "PlaylistFragment";
@@ -173,8 +172,7 @@ public class PlaylistFragment extends Fragment implements
 
         mSelectedMedia = mMediaList.get(position);
         mAdapter.setSelectedIndex(position);
-        mIMainActivity.onMediaSelected(
-                mSelectArtist.getArtist_id(), // playlist_id = artist_id
+        mIMainActivity.onMediaSelected(mSelectArtist.getArtist_id(), // playlist_id = artist_id
                 mMediaList.get(position),
                 position);
         saveLastPlayedSongProperties();
